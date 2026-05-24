@@ -1,11 +1,12 @@
 grid:
   questions: 20
-  options: 5
+  options: 3
   min_area_ratio: 0.1
 
 bubble:
   fill_threshold: 0.45
   min_bubble_area: 100
+  min_spread: 0.03
 
 scoring:
   correct: 1.0

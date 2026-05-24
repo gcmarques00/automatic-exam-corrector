@@ -4,6 +4,7 @@ Usage:
   python -m src.main grade --image <path> --key <path> [--debug]
   python -m src.main grade-batch --dir <path> --key <path> [--debug]
   python -m src.main capture --key <path> [--debug]
+  python -m src.main grade-dataset --image <path> --ground-truth <path> [--debug]
 """
 
 import argparse
@@ -11,10 +12,12 @@ import logging
 import sys
 from pathlib import Path
 
-from src import capture, grid_detector, perspective, preprocess, utils
+from src import bubble_reader, capture, grader, grid_detector, perspective, preprocess, utils, visualizer
 
 _DEFAULT_CONFIG = Path(__file__).parent.parent / "config" / "default.yaml"
 _RESULTS_DIR = Path(__file__).parent.parent / "data" / "results"
+_DEFAULT_DATASET_DIR = Path(__file__).parent.parent / "data" / "dataset" / "answer_sheets"
+_DEFAULT_GT = Path(__file__).parent.parent / "data" / "dataset" / "ground_truth" / "exams.mat"
 
 
 def _setup_logging(debug: bool) -> None:
@@ -25,6 +28,7 @@ def _setup_logging(debug: bool) -> None:
 def _run_pipeline(
     img,
     config: dict,
+    key_path: Path,
     debug: bool,
     output_stem: str,
 ) -> None:
@@ -58,26 +62,97 @@ def _run_pipeline(
     if debug:
         utils.save_image(warped, _RESULTS_DIR / "debug" / f"{output_stem}_warped.png")
 
+    # Bubble reading
+    marks = bubble_reader.read_marks(warped, config)
+
+    # Grading
+    key = grader.load_key(key_path)
+    results = grader.grade(marks, key, config)
+
+    # Visualisation
+    annotated = visualizer.annotate(warped, marks, results, config)
+    utils.save_image(annotated, _RESULTS_DIR / f"{output_stem}_result.png")
+
     logger.info("Pipeline complete for %s", output_stem)
 
 
 def cmd_grade(args: argparse.Namespace) -> None:
     config = utils.load_config(args.config)
     img = capture.from_file(args.image)
-    _run_pipeline(img, config, args.debug, args.image.stem)
+    _run_pipeline(img, config, args.key, args.debug, args.image.stem)
 
 
 def cmd_grade_batch(args: argparse.Namespace) -> None:
     config = utils.load_config(args.config)
     images = capture.from_directory(args.dir)
     for path, img in images:
-        _run_pipeline(img, config, args.debug, path.stem)
+        _run_pipeline(img, config, args.key, args.debug, path.stem)
+
+
+def cmd_grade_dataset(args: argparse.Namespace) -> None:
+    config = utils.load_config(args.config)
+    img = capture.from_file(args.image)
+    logger = utils.get_logger(__name__)
+
+    record = utils.mat_load_record(args.ground_truth, args.image.name)
+    rects = record["rects"]
+    key = record["key"]
+
+    marks = bubble_reader.read_marks_from_rects(img, rects, config)
+    results = grader.grade(marks, key, config)
+    annotated = visualizer.annotate_rects(img, rects, marks, results, config)
+
+    output_stem = args.image.stem
+    utils.save_image(annotated, _RESULTS_DIR / f"{output_stem}_result.png")
+
+    if args.debug:
+        for q, detail in enumerate(results["details"]):
+            logger.debug(
+                "Q%d: detected=%s expected=%s → %s",
+                q + 1, detail["detected"], detail["expected"], detail["result"],
+            )
+
+    logger.info(
+        "Score: %.1f / %.1f — saved to data/results/%s_result.png",
+        results["score"], results["max_score"], output_stem,
+    )
+
+
+def cmd_evaluate_dataset(args: argparse.Namespace) -> None:
+    config = utils.load_config(args.config)
+    logger = utils.get_logger(__name__)
+
+    images = sorted(args.dataset_dir.glob("**/*.png"))
+    total_correct = 0
+    total_questions = 0
+    skipped = 0
+
+    for img_path in images:
+        try:
+            img = capture.from_file(img_path)
+            record = utils.mat_load_record(args.ground_truth, img_path.name)
+            marks = bubble_reader.read_marks_from_rects(img, record["rects"], config)
+            results = grader.grade(marks, record["key"], config)
+
+            n_correct = results["correct"]
+            n_total = len(record["key"])
+            print(f"{img_path.stem}: {n_correct}/{n_total} correct answers")
+
+            total_correct += n_correct
+            total_questions += n_total
+        except Exception as e:
+            logger.warning("Skipped %s: %s", img_path.name, e)
+            skipped += 1
+
+    processed = len(images) - skipped
+    print(f"\nProcessed {processed} images ({skipped} skipped)")
+    print(f"Total: {total_correct}/{total_questions} correct answers")
 
 
 def cmd_capture(args: argparse.Namespace) -> None:
     config = utils.load_config(args.config)
     img = capture.from_webcam()
-    _run_pipeline(img, config, args.debug, "webcam_capture")
+    _run_pipeline(img, config, args.key, args.debug, "webcam_capture")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -90,15 +165,29 @@ def build_parser() -> argparse.ArgumentParser:
     p_grade = sub.add_parser("grade", help="Grade a single image")
     p_grade.add_argument("--image", type=Path, required=True)
     p_grade.add_argument("--key", type=Path, required=True)
+    p_grade.add_argument("--debug", action="store_true")
     p_grade.set_defaults(func=cmd_grade)
 
     p_batch = sub.add_parser("grade-batch", help="Grade all images in a directory")
     p_batch.add_argument("--dir", type=Path, required=True)
     p_batch.add_argument("--key", type=Path, required=True)
+    p_batch.add_argument("--debug", action="store_true")
     p_batch.set_defaults(func=cmd_grade_batch)
+
+    p_ds = sub.add_parser("grade-dataset", help="Grade using exams.mat ground-truth coordinates")
+    p_ds.add_argument("--image", type=Path, required=True)
+    p_ds.add_argument("--ground-truth", type=Path, required=True)
+    p_ds.add_argument("--debug", action="store_true")
+    p_ds.set_defaults(func=cmd_grade_dataset)
+
+    p_eval = sub.add_parser("evaluate-dataset", help="Evaluate accuracy across all dataset images")
+    p_eval.add_argument("--dataset-dir", type=Path, default=_DEFAULT_DATASET_DIR)
+    p_eval.add_argument("--ground-truth", type=Path, default=_DEFAULT_GT)
+    p_eval.set_defaults(func=cmd_evaluate_dataset)
 
     p_cap = sub.add_parser("capture", help="Capture from webcam and grade")
     p_cap.add_argument("--key", type=Path, required=True)
+    p_cap.add_argument("--debug", action="store_true")
     p_cap.set_defaults(func=cmd_capture)
 
     return parser
