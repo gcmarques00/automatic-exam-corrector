@@ -1,16 +1,3 @@
-"""Read marked bubbles from a perspective-corrected answer sheet.
-
-Adapted from:
-  ua_computerVision / #03 - Low Level Image Processing (P. Dias, UA)
-  ua_computerVision / #05 - Morph_Segmentation (P. Dias, UA)
-
-Academic references:
-  - Pixel-based region analysis: Gonzalez, R.C. & Woods, R.E. (2018).
-    Digital Image Processing (4th ed.). Pearson. §10.
-  - Morphological operations: Serra, J. (1982). Image Analysis and
-    Mathematical Morphology. Academic Press.
-"""
-
 import cv2
 import numpy as np
 

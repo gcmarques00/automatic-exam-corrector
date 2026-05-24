@@ -1,10 +1,3 @@
-"""Image acquisition from file, directory, or webcam.
-
-Blur detection uses the variance of the Laplacian operator, following:
-  Pech-Pacheco et al. (2000). "Diatom autofocusing in brightfield microscopy:
-  a comparative study." ICPR, Vol. 3.
-"""
-
 import logging
 from pathlib import Path
 

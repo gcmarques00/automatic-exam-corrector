@@ -1,18 +1,3 @@
-"""Image preprocessing: grayscale conversion, Gaussian blur, thresholding.
-
-Adapted from:
-  ua_computerVision / #03 - Low Level Image Processing I (P. Dias, UA)
-  ua_computerVision / #04 - Edges_Lines (P. Dias, UA)
-
-Academic references:
-  - Gaussian blur: Gonzalez, R.C. & Woods, R.E. (2018). Digital Image
-    Processing (4th ed.). Pearson. §3.4.
-  - Adaptive thresholding: Bradley, D. & Roth, G. (2007). "Adaptive
-    Thresholding Using the Integral Image." Journal of Graphics Tools, 12(2).
-  - Otsu binarization: Otsu, N. (1979). "A Threshold Selection Method from
-    Gray-Level Histograms." IEEE Trans. Systems, Man, and Cybernetics, 9(1).
-"""
-
 from typing import Literal
 
 import cv2

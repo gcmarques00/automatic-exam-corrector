@@ -1,9 +1,3 @@
-"""Tests for src/preprocess.py.
-
-Verifies: output is binary, correct dimensions preserved, both threshold
-methods work.
-"""
-
 import numpy as np
 import pytest
 

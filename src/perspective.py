@@ -1,17 +1,3 @@
-"""Perspective correction: warp the detected answer grid to a frontal rectangle.
-
-Adapted from:
-  ua_computerVision / #06 - GeometricTransforms_Features (P. Dias, UA)
-  Exercise 6.6 — homography estimation with cv2.findHomography and
-  cv2.warpPerspective applied to correct oblique views of flat objects.
-
-Academic references:
-  - Projective (homography) transform: Hartley, R. & Zisserman, A. (2003).
-    Multiple View Geometry in Computer Vision (2nd ed.). Cambridge UP.
-    §2.3 — The 2D projective plane and transformations.
-  - DLT algorithm for homography estimation: Hartley & Zisserman (2003), §4.1.
-"""
-
 import cv2
 import numpy as np
 
@@ -19,7 +5,7 @@ from src.utils import get_logger
 
 logger = get_logger(__name__)
 
-_DEFAULT_ASPECT = 1.414  # A4 portrait ratio (ISO 216)
+_DEFAULT_ASPECT = 1.414
 
 
 def compute_output_size(corners: np.ndarray, aspect_ratio: float = _DEFAULT_ASPECT) -> tuple[int, int]:

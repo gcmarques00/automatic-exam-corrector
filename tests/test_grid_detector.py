@@ -1,9 +1,3 @@
-"""Tests for src/grid_detector.py.
-
-Verifies: finds grid in a synthetic binary image with a clear rectangle,
-returns 4 ordered corners, returns None when no grid is present.
-"""
-
 import numpy as np
 import pytest
 
@@ -32,7 +26,6 @@ def test_find_grid_returns_none_on_blank() -> None:
 
 def test_find_grid_returns_none_when_too_small() -> None:
     binary = _make_binary_with_rect(400, 300, 40)
-    # Require at least 90 % of area — the rect covers ~72 % → should fail
     result = find_grid(binary, min_area_ratio=0.9)
     assert result is None
 

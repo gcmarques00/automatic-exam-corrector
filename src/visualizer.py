@@ -1,10 +1,3 @@
-"""Annotate a warped answer sheet with grading results.
-
-Adapted from:
-  ua_computerVision / #02 - Intro to OpenCV (P. Dias, UA)
-  Drawing functions: cv2.circle, cv2.putText, cv2.rectangle.
-"""
-
 import cv2
 import numpy as np
 

@@ -1,12 +1,3 @@
-"""CLI entry point for the automatic exam corrector.
-
-Usage:
-  python -m src.main grade --image <path> --key <path> [--debug]
-  python -m src.main grade-batch --dir <path> --key <path> [--debug]
-  python -m src.main capture --key <path> [--debug]
-  python -m src.main grade-dataset --image <path> --ground-truth <path> [--debug]
-"""
-
 import argparse
 import logging
 import sys
@@ -35,7 +26,6 @@ def _run_pipeline(
     """Run the full pipeline on a single image."""
     logger = utils.get_logger(__name__)
 
-    # Preprocessing
     kernel = tuple(config["preprocessing"]["blur_kernel"])
     block = config["preprocessing"]["adaptive_block_size"]
     c = config["preprocessing"]["adaptive_c"]
@@ -44,7 +34,6 @@ def _run_pipeline(
     if debug:
         utils.save_image(binary, _RESULTS_DIR / "debug" / f"{output_stem}_binary.png")
 
-    # Grid detection
     min_area = config["grid"]["min_area_ratio"]
     corners = grid_detector.find_grid(binary, min_area_ratio=min_area)
 
@@ -56,20 +45,16 @@ def _run_pipeline(
         annotated = grid_detector.draw_grid_contour(img, corners)
         utils.save_image(annotated, _RESULTS_DIR / "debug" / f"{output_stem}_grid.png")
 
-    # Perspective correction
     warped = perspective.warp(img, corners)
 
     if debug:
         utils.save_image(warped, _RESULTS_DIR / "debug" / f"{output_stem}_warped.png")
 
-    # Bubble reading
     marks = bubble_reader.read_marks(warped, config)
 
-    # Grading
     key = grader.load_key(key_path)
     results = grader.grade(marks, key, config)
 
-    # Visualisation
     annotated = visualizer.annotate(warped, marks, results, config)
     utils.save_image(annotated, _RESULTS_DIR / f"{output_stem}_result.png")
 

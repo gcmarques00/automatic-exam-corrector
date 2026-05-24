@@ -1,5 +1,3 @@
-"""Tests for src/grader.py."""
-
 import json
 import tempfile
 from pathlib import Path
@@ -13,7 +11,7 @@ _CONFIG = {
 }
 
 _KEY = {0: "A", 1: "B", 2: "C"}
-_MARKS_ALL_CORRECT = {0: 0, 1: 1, 2: 2}   # A=0, B=1, C=2
+_MARKS_ALL_CORRECT = {0: 0, 1: 1, 2: 2}
 _MARKS_ALL_WRONG = {0: 1, 1: 2, 2: 0}
 _MARKS_ALL_NONE = {0: None, 1: None, 2: None}
 

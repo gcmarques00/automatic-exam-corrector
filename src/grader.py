@@ -1,5 +1,3 @@
-"""Score detected bubble marks against a JSON answer key."""
-
 import json
 from pathlib import Path
 from typing import Any

@@ -1,18 +1,3 @@
-"""Detect the answer-grid bounding quadrilateral in a thresholded image.
-
-Adapted from:
-  ua_computerVision / #04 - Edges_Lines (P. Dias, UA)
-  ua_computerVision / #05 - Morph_Segmentation (P. Dias, UA)
-
-Academic references:
-  - Border-following contour algorithm: Suzuki, S. & Abe, K. (1985).
-    "Topological Structural Analysis of Digitized Binary Images by Border
-    Following." Computer Vision, Graphics, and Image Processing, 30(1), 32-46.
-  - Douglas-Peucker polygon approximation: Douglas, D. & Peucker, T. (1973).
-    "Algorithms for the Reduction of the Number of Points Required to
-    Represent a Digitized Line or Its Caricature." Cartographica, 10(2).
-"""
-
 import cv2
 import numpy as np
 
@@ -34,12 +19,12 @@ def _order_corners(pts: np.ndarray) -> np.ndarray:
     rect = np.zeros((4, 2), dtype=np.float32)
 
     s = pts.sum(axis=1)
-    rect[0] = pts[np.argmin(s)]   # top-left: smallest sum
-    rect[2] = pts[np.argmax(s)]   # bottom-right: largest sum
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
 
     diff = np.diff(pts, axis=1)
-    rect[1] = pts[np.argmin(diff)]  # top-right: smallest diff
-    rect[3] = pts[np.argmax(diff)]  # bottom-left: largest diff
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
 
     return rect
 
@@ -76,13 +61,12 @@ def find_grid(
         logger.warning("No contours found in binary image")
         return None
 
-    # Sort largest-first; the grid is the dominant rectangular region
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
     for contour in contours:
         area = cv2.contourArea(contour)
         if area < min_area:
-            break  # remaining contours are smaller — stop early
+            break
 
         epsilon = 0.02 * cv2.arcLength(contour, closed=True)
         approx = cv2.approxPolyDP(contour, epsilon, closed=True)

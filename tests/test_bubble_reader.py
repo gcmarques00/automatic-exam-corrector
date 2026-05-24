@@ -1,5 +1,3 @@
-"""Tests for src/bubble_reader.py."""
-
 import numpy as np
 import pytest
 
@@ -11,7 +9,7 @@ _CONFIG = {
     "preprocessing": {"blur_kernel": [5, 5], "adaptive_block_size": 11, "adaptive_c": 2},
 }
 
-_H, _W = 400, 300  # 4 questions × 3 options → 100×100 cells
+_H, _W = 400, 300
 
 
 def _white_bgr() -> np.ndarray:

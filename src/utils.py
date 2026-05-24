@@ -1,5 +1,3 @@
-"""Shared helpers: config loading, image I/O, logging setup, ground-truth access."""
-
 import logging
 from pathlib import Path
 from typing import Any
@@ -132,7 +130,7 @@ def mat_to_answer_key(mat_path: Path, image_name: str) -> dict[int, str]:
     KeyError
         If image_name is not found in the ground truth records.
     """
-    from scipy.io import loadmat  # optional dependency — not needed by the main pipeline
+    from scipy.io import loadmat
 
     import numpy as np
 
