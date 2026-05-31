@@ -7,6 +7,12 @@ bubble:
   fill_threshold: 0.45
   min_bubble_area: 100
   min_spread: 0.03
+  morph_open_kernel: 3
+  cell_inset: 4
+  ml_classifier:
+    enabled: true
+    local_models_dir: "models"
+    hf_repo: "spraxx/exam-answer-classifier"
 
 scoring:
   correct: 1.0

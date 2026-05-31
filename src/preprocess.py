@@ -11,14 +11,15 @@ logger = get_logger(__name__)
 def to_grayscale(img: np.ndarray) -> np.ndarray:
     """Convert a BGR image to grayscale.
 
-    Follows the pattern from ua_computerVision #03:
-      cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    Parameters
+    ----------
+    img : np.ndarray
+        BGR image (H × W × 3).
 
-    Args:
-        img: BGR image (H x W x 3).
-
-    Returns:
-        Single-channel grayscale image (H x W).
+    Returns
+    -------
+    np.ndarray
+        Single-channel grayscale image (H × W).
     """
     if img.ndim == 2:
         return img
@@ -31,18 +32,19 @@ def apply_gaussian_blur(
 ) -> np.ndarray:
     """Smooth the image with a Gaussian kernel to suppress noise.
 
-    Follows the pattern from ua_computerVision #04 (aula_04_ex_02.py):
-      cv2.GaussianBlur(image, kernel_size, 0)
+    Attenuates high-frequency noise while preserving low-frequency structure
+    (Gonzalez & Woods, 2018, §3.4).
 
-    Gaussian smoothing is the standard pre-step before thresholding and edge
-    detection because it attenuates high-frequency noise while preserving
-    low-frequency structure (Gonzalez & Woods, 2018, §3.4).
+    Parameters
+    ----------
+    gray : np.ndarray
+        Grayscale image.
+    kernel_size : tuple of int
+        Gaussian kernel dimensions (must be odd).
 
-    Args:
-        gray: Grayscale image.
-        kernel_size: Gaussian kernel dimensions (must be odd).
-
-    Returns:
+    Returns
+    -------
+    np.ndarray
         Blurred grayscale image.
     """
     return cv2.GaussianBlur(gray, kernel_size, 0)
@@ -55,21 +57,21 @@ def adaptive_threshold(
 ) -> np.ndarray:
     """Binarize using adaptive (local) Gaussian thresholding.
 
-    Follows the pattern from ua_computerVision #03 (aula_03_ex_01.py concept):
-      cv2.adaptiveThreshold(..., cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                             cv2.THRESH_BINARY_INV, block_size, c)
+    Computes a local threshold per pixel neighbourhood, making it robust to
+    uneven illumination (Bradley & Roth, 2007).
 
-    Adaptive thresholding computes a local threshold for each pixel
-    neighbourhood, making it robust to uneven illumination — the dominant
-    artefact when photographing paper sheets with a phone camera (Bradley &
-    Roth, 2007).
+    Parameters
+    ----------
+    blurred : np.ndarray
+        Gaussian-blurred grayscale image.
+    block_size : int
+        Size of the local neighbourhood (must be odd, >= 3).
+    c : int
+        Constant subtracted from the weighted mean.
 
-    Args:
-        blurred: Gaussian-blurred grayscale image.
-        block_size: Size of the local neighbourhood (must be odd, >= 3).
-        c: Constant subtracted from the weighted mean.
-
-    Returns:
+    Returns
+    -------
+    np.ndarray
         Binary image (255 = foreground / ink, 0 = background).
     """
     return cv2.adaptiveThreshold(
@@ -85,14 +87,17 @@ def adaptive_threshold(
 def otsu_threshold(blurred: np.ndarray) -> np.ndarray:
     """Binarize using Otsu's global threshold selection.
 
-    Otsu's method finds the threshold that minimises intra-class variance of
-    pixel intensities, assuming a bimodal histogram (Otsu, 1979).  Provided
-    for comparison against adaptive thresholding (proposal.md Phase 3).
+    Minimises intra-class variance of pixel intensities, assuming a bimodal
+    histogram (Otsu, 1979).
 
-    Args:
-        blurred: Gaussian-blurred grayscale image.
+    Parameters
+    ----------
+    blurred : np.ndarray
+        Gaussian-blurred grayscale image.
 
-    Returns:
+    Returns
+    -------
+    np.ndarray
         Binary image (255 = foreground / ink, 0 = background).
     """
     _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
@@ -108,15 +113,23 @@ def run(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Full preprocessing pipeline: grayscale → blur → threshold.
 
-    Args:
-        img: Input BGR image.
-        kernel_size: Gaussian blur kernel size.
-        block_size: Adaptive threshold neighbourhood size.
-        c: Adaptive threshold constant.
-        method: "adaptive" (default) or "otsu".
+    Parameters
+    ----------
+    img : np.ndarray
+        Input BGR image.
+    kernel_size : tuple of int
+        Gaussian blur kernel size.
+    block_size : int
+        Adaptive threshold neighbourhood size.
+    c : int
+        Adaptive threshold constant.
+    method : {"adaptive", "otsu"}
+        Thresholding method.
 
-    Returns:
-        Tuple of (grayscale image, binary thresholded image).
+    Returns
+    -------
+    tuple of np.ndarray
+        (grayscale image, binary thresholded image).
     """
     gray = to_grayscale(img)
     blurred = apply_gaussian_blur(gray, kernel_size)

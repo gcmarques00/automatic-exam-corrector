@@ -37,7 +37,7 @@ def test_all_unanswered():
 
 
 def test_mixed_counts_sum_to_total():
-    marks = {0: 0, 1: 2, 2: None}  # correct, wrong, unanswered
+    marks = {0: 0, 1: 2, 2: None}
     r = grade(marks, _KEY, _CONFIG)
     assert r["correct"] + r["wrong"] + r["unanswered"] == len(_KEY)
 

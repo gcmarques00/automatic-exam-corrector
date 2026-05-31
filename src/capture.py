@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 
 import cv2
@@ -15,15 +14,19 @@ _MIN_DIM = 200
 def _is_blurry(img: np.ndarray, threshold: float = _BLUR_THRESHOLD) -> bool:
     """Return True if the image is too blurry to process reliably.
 
-    The variance of the Laplacian is a fast focus measure: a low variance
-    indicates that most pixel intensities are similar (no sharp edges), i.e.
-    the image is out of focus (Pech-Pacheco et al., 2000).
+    Uses Laplacian variance as a focus measure: low variance indicates no sharp
+    edges (Pech-Pacheco et al., 2000).
 
-    Args:
-        img: BGR or grayscale image.
-        threshold: Variance below this value is considered blurry.
+    Parameters
+    ----------
+    img : np.ndarray
+        BGR or grayscale image.
+    threshold : float
+        Variance below this value is considered blurry.
 
-    Returns:
+    Returns
+    -------
+    bool
         True if variance of Laplacian < threshold.
     """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img
@@ -43,15 +46,22 @@ def _validate(img: np.ndarray, path: Path) -> None:
 def from_file(path: Path) -> np.ndarray:
     """Load a single exam sheet image from disk.
 
-    Args:
-        path: Path to the image file.
+    Parameters
+    ----------
+    path : Path
+        Path to the image file.
 
-    Returns:
+    Returns
+    -------
+    np.ndarray
         BGR image as a numpy array.
 
-    Raises:
-        FileNotFoundError: If the file does not exist.
-        ValueError: If the image is too small or unreadable.
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    ValueError
+        If the image is too small or unreadable.
     """
     img = read_image(path)
     _validate(img, path)
@@ -62,14 +72,20 @@ def from_file(path: Path) -> np.ndarray:
 def from_directory(directory: Path) -> list[tuple[Path, np.ndarray]]:
     """Load all supported images from a directory.
 
-    Args:
-        directory: Path to directory containing exam sheet images.
+    Parameters
+    ----------
+    directory : Path
+        Path to directory containing exam sheet images.
 
-    Returns:
+    Returns
+    -------
+    list of tuple
         List of (path, image) tuples for each valid image found.
 
-    Raises:
-        FileNotFoundError: If the directory does not exist.
+    Raises
+    ------
+    FileNotFoundError
+        If the directory does not exist.
     """
     if not directory.is_dir():
         raise FileNotFoundError(f"Directory not found: {directory}")
@@ -93,14 +109,20 @@ def from_directory(directory: Path) -> list[tuple[Path, np.ndarray]]:
 def from_webcam(camera_index: int = 0) -> np.ndarray:
     """Capture a single frame from the webcam.
 
-    Args:
-        camera_index: OpenCV camera device index.
+    Parameters
+    ----------
+    camera_index : int
+        OpenCV camera device index.
 
-    Returns:
+    Returns
+    -------
+    np.ndarray
         BGR image as a numpy array.
 
-    Raises:
-        RuntimeError: If the camera cannot be opened or the frame is empty.
+    Raises
+    ------
+    RuntimeError
+        If the camera cannot be opened or the frame is empty.
     """
     cap = cv2.VideoCapture(camera_index)
     if not cap.isOpened():

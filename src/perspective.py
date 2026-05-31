@@ -11,14 +11,16 @@ _DEFAULT_ASPECT = 1.414
 def compute_output_size(corners: np.ndarray, aspect_ratio: float = _DEFAULT_ASPECT) -> tuple[int, int]:
     """Compute output rectangle dimensions from the detected corners.
 
-    Width is derived from the average of the top and bottom edge lengths of
-    the detected quadrilateral; height is width × aspect_ratio.
+    Parameters
+    ----------
+    corners : np.ndarray
+        Ordered (4, 2) corner array [TL, TR, BR, BL].
+    aspect_ratio : float
+        height / width ratio of the canonical output sheet.
 
-    Args:
-        corners: Ordered (4, 2) corner array [TL, TR, BR, BL].
-        aspect_ratio: height / width ratio of the canonical output sheet.
-
-    Returns:
+    Returns
+    -------
+    tuple of int
         (width, height) in pixels.
     """
     tl, tr, br, bl = corners
@@ -37,22 +39,23 @@ def warp(
 ) -> np.ndarray:
     """Rectify a perspective-distorted answer sheet to a frontal view.
 
-    Follows ua_computerVision #06 exercise 6.6:
-      M = cv2.getPerspectiveTransform(src_pts, dst_pts)
-      warped = cv2.warpPerspective(img, M, (width, height))
+    Computes a homography via cv2.getPerspectiveTransform (Direct Linear
+    Transform, Hartley & Zisserman, 2003, §4.1) and warps the image.
 
-    The homography H mapping the four detected corners to the four corners of a
-    canonical rectangle is computed by cv2.getPerspectiveTransform, which
-    solves the Direct Linear Transform (DLT) system (Hartley & Zisserman,
-    2003, §4.1).
+    Parameters
+    ----------
+    img : np.ndarray
+        BGR source image.
+    corners : np.ndarray
+        Ordered (4, 2) float32 corner array [TL, TR, BR, BL].
+    output_size : tuple of int, optional
+        (width, height) of the output. If None, derived from corners.
+    aspect_ratio : float
+        height / width ratio used when output_size is None.
 
-    Args:
-        img: BGR source image.
-        corners: Ordered (4, 2) float32 corner array [TL, TR, BR, BL].
-        output_size: (width, height) of the output. If None, derived from corners.
-        aspect_ratio: height / width ratio used when output_size is None.
-
-    Returns:
+    Returns
+    -------
+    np.ndarray
         Warped (rectified) BGR image.
     """
     if output_size is None:

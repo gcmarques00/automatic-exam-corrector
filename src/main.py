@@ -74,6 +74,21 @@ def cmd_grade_batch(args: argparse.Namespace) -> None:
         _run_pipeline(img, config, args.key, args.debug, path.stem)
 
 
+def _load_classifier_if_enabled(config: dict):
+    ml_cfg = config.get("bubble", {}).get("ml_classifier", {})
+    if not ml_cfg.get("enabled", False):
+        return None
+    local_dir = ml_cfg.get("local_models_dir")
+    if local_dir and Path(local_dir).exists():
+        from src.classifier import load_classifier_local
+        return load_classifier_local(Path(local_dir))
+    hf_repo = ml_cfg.get("hf_repo")
+    if hf_repo:
+        from src.classifier import load_classifier
+        return load_classifier(hf_repo)
+    return None
+
+
 def cmd_grade_dataset(args: argparse.Namespace) -> None:
     config = utils.load_config(args.config)
     img = capture.from_file(args.image)
@@ -83,7 +98,8 @@ def cmd_grade_dataset(args: argparse.Namespace) -> None:
     rects = record["rects"]
     key = record["key"]
 
-    marks = bubble_reader.read_marks_from_rects(img, rects, config)
+    classifier = _load_classifier_if_enabled(config)
+    marks = bubble_reader.read_marks_from_rects(img, rects, config, classifier=classifier)
     results = grader.grade(marks, key, config)
     annotated = visualizer.annotate_rects(img, rects, marks, results, config)
 
@@ -112,16 +128,21 @@ def cmd_evaluate_dataset(args: argparse.Namespace) -> None:
     total_questions = 0
     skipped = 0
 
+    classifier = _load_classifier_if_enabled(config)
+
     for img_path in images:
         try:
             img = capture.from_file(img_path)
             record = utils.mat_load_record(args.ground_truth, img_path.name)
-            marks = bubble_reader.read_marks_from_rects(img, record["rects"], config)
+            marks = bubble_reader.read_marks_from_rects(img, record["rects"], config, classifier=classifier)
             results = grader.grade(marks, record["key"], config)
 
             n_correct = results["correct"]
             n_total = len(record["key"])
             print(f"{img_path.stem}: {n_correct}/{n_total} correct answers")
+
+            annotated = visualizer.annotate_rects(img, record["rects"], marks, results, config)
+            utils.save_image(annotated, _RESULTS_DIR / f"{img_path.stem}_result.png")
 
             total_correct += n_correct
             total_questions += n_total
@@ -132,6 +153,11 @@ def cmd_evaluate_dataset(args: argparse.Namespace) -> None:
     processed = len(images) - skipped
     print(f"\nProcessed {processed} images ({skipped} skipped)")
     print(f"Total: {total_correct}/{total_questions} correct answers")
+
+
+def cmd_train_classifier(args: argparse.Namespace) -> None:
+    from scripts.train_classifier import train
+    train(args.dataset, args.models_dir)
 
 
 def cmd_capture(args: argparse.Namespace) -> None:
@@ -174,6 +200,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_cap.add_argument("--key", type=Path, required=True)
     p_cap.add_argument("--debug", action="store_true")
     p_cap.set_defaults(func=cmd_capture)
+
+    p_train = sub.add_parser("train-classifier", help="Train Stage 1 (BoVW+SVM) and Stage 2 (CNN) models locally")
+    p_train.add_argument("--dataset", type=Path, default=Path("data/cell_dataset/cells.npz"))
+    p_train.add_argument("--models-dir", type=Path, default=Path("models"))
+    p_train.set_defaults(func=cmd_train_classifier)
 
     return parser
 

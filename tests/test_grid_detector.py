@@ -33,8 +33,8 @@ def test_find_grid_returns_none_when_too_small() -> None:
 def test_order_corners_top_left_is_first() -> None:
     pts = np.array([[100, 0], [0, 0], [100, 100], [0, 100]], dtype=np.float32)
     ordered = _order_corners(pts)
-    assert tuple(ordered[0]) == (0.0, 0.0)   # top-left
-    assert tuple(ordered[2]) == (100.0, 100.0)  # bottom-right
+    assert tuple(ordered[0]) == (0.0, 0.0)
+    assert tuple(ordered[2]) == (100.0, 100.0)
 
 
 def test_draw_grid_contour_returns_same_shape() -> None:
@@ -42,4 +42,4 @@ def test_draw_grid_contour_returns_same_shape() -> None:
     corners = np.array([[50, 50], [250, 50], [250, 350], [50, 350]], dtype=np.float32)
     out = draw_grid_contour(img, corners)
     assert out.shape == img.shape
-    assert not np.array_equal(out, img)  # lines were drawn
+    assert not np.array_equal(out, img)

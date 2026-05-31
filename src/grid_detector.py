@@ -9,10 +9,14 @@ logger = get_logger(__name__)
 def _order_corners(pts: np.ndarray) -> np.ndarray:
     """Order four corner points as [top-left, top-right, bottom-right, bottom-left].
 
-    Args:
-        pts: Array of shape (4, 2) with (x, y) corner coordinates.
+    Parameters
+    ----------
+    pts : np.ndarray
+        Array of shape (4, 2) with (x, y) corner coordinates.
 
-    Returns:
+    Returns
+    -------
+    np.ndarray
         Ordered array of shape (4, 2).
     """
     pts = pts.reshape(4, 2).astype(np.float32)
@@ -35,21 +39,20 @@ def find_grid(
 ) -> np.ndarray | None:
     """Find the four corners of the answer-grid rectangle.
 
-    The approach follows ua_computerVision #04 and #05:
-      1. cv2.findContours — border-following algorithm (Suzuki & Abe, 1985).
-      2. Filter by area to discard noise (contour must cover at least
-         `min_area_ratio` of the image).
-      3. cv2.approxPolyDP — Douglas-Peucker simplification (Douglas &
-         Peucker, 1973) to reduce the contour to its polygon vertices.
-      4. Accept only quadrilaterals (4 vertices) as grid candidates.
+    Uses cv2.findContours (Suzuki & Abe, 1985), filters by area, then
+    cv2.approxPolyDP (Douglas & Peucker, 1973) to reduce the contour to
+    polygon vertices. Accepts only quadrilaterals as grid candidates.
 
-    The answer grid is expected to be the largest quadrilateral in the image.
+    Parameters
+    ----------
+    binary : np.ndarray
+        Binary (thresholded) image — white foreground on black.
+    min_area_ratio : float
+        Minimum fraction of image area a contour must cover.
 
-    Args:
-        binary: Binary (thresholded) image — white foreground on black.
-        min_area_ratio: Minimum fraction of image area a contour must cover.
-
-    Returns:
+    Returns
+    -------
+    np.ndarray or None
         Ordered corner array of shape (4, 2) as float32, or None if not found.
     """
     image_area = binary.shape[0] * binary.shape[1]
@@ -79,6 +82,98 @@ def find_grid(
     return None
 
 
+def find_grid_canny(
+    gray: np.ndarray,
+    min_area_ratio: float = 0.1,
+    canny_lo: int = 50,
+    canny_hi: int = 150,
+    hough_threshold: int = 80,
+    min_line_len: int = 150,
+    max_line_gap: int = 30,
+) -> np.ndarray | None:
+    """Find grid corners using Canny edge detection and Hough line transform.
+
+    Edge-based alternative to find_grid(). Uses Canny (1986) edges and the
+    probabilistic Hough transform (Matas et al., 2000) to find long straight
+    line segments, then computes the outer bounding rectangle from extreme lines.
+
+    Parameters
+    ----------
+    gray : np.ndarray
+        Grayscale image (single channel).
+    min_area_ratio : float
+        Minimum fraction of image area the detected rectangle must cover.
+    canny_lo : int
+        Lower hysteresis threshold for Canny.
+    canny_hi : int
+        Upper hysteresis threshold for Canny.
+    hough_threshold : int
+        Minimum accumulator vote count for Hough.
+    min_line_len : int
+        Minimum line segment length in pixels.
+    max_line_gap : int
+        Maximum gap to bridge between collinear segments.
+
+    Returns
+    -------
+    np.ndarray or None
+        Ordered corner array of shape (4, 2) as float32, or None if not found.
+    """
+    h, w = gray.shape[:2]
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blurred, canny_lo, canny_hi)
+
+    lines = cv2.HoughLinesP(
+        edges,
+        rho=1,
+        theta=np.pi / 180,
+        threshold=hough_threshold,
+        minLineLength=min_line_len,
+        maxLineGap=max_line_gap,
+    )
+
+    if lines is None:
+        logger.warning("Canny/Hough: no lines detected")
+        return None
+
+    horiz_ys: list[int] = []
+    vert_xs: list[int] = []
+
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        angle = np.degrees(np.arctan2(abs(y2 - y1), abs(x2 - x1)))
+        if angle < 20:
+            horiz_ys.extend([y1, y2])
+        elif angle > 70:
+            vert_xs.extend([x1, x2])
+
+    if not horiz_ys or not vert_xs:
+        logger.warning(
+            "Canny/Hough: insufficient directional lines (horiz=%d, vert=%d)",
+            len(horiz_ys), len(vert_xs),
+        )
+        return None
+
+    top_y  = int(np.percentile(horiz_ys,  5))
+    bot_y  = int(np.percentile(horiz_ys, 95))
+    left_x = int(np.percentile(vert_xs,   5))
+    right_x = int(np.percentile(vert_xs, 95))
+
+    area = (bot_y - top_y) * (right_x - left_x)
+    if area < h * w * min_area_ratio:
+        logger.warning(
+            "Canny/Hough: bounding rectangle too small (area=%d)", area
+        )
+        return None
+
+    corners = np.array(
+        [[left_x, top_y], [right_x, top_y], [right_x, bot_y], [left_x, bot_y]],
+        dtype=np.float32,
+    )
+    logger.info("Canny/Hough grid found — area=%.0f px²", float(area))
+    return _order_corners(corners)
+
+
 def draw_grid_contour(
     img: np.ndarray,
     corners: np.ndarray,
@@ -87,13 +182,20 @@ def draw_grid_contour(
 ) -> np.ndarray:
     """Draw the detected grid outline on a copy of the image.
 
-    Args:
-        img: BGR image to annotate.
-        corners: Ordered (4, 2) corner array from find_grid().
-        color: BGR line colour.
-        thickness: Line thickness in pixels.
+    Parameters
+    ----------
+    img : np.ndarray
+        BGR image to annotate.
+    corners : np.ndarray
+        Ordered (4, 2) corner array from find_grid().
+    color : tuple of int
+        BGR line colour.
+    thickness : int
+        Line thickness in pixels.
 
-    Returns:
+    Returns
+    -------
+    np.ndarray
         Annotated copy of the image.
     """
     out = img.copy()

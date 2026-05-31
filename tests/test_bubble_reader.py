@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import pytest
 
@@ -56,3 +57,23 @@ def test_fill_threshold_respected():
     img = _fill_cell(_white_bgr(), row=0, col=0, ratio=0.5)
     marks = read_marks(img, config_strict)
     assert marks[0] is None
+
+
+def test_scratch_pattern_not_detected():
+    img = _white_bgr()
+    cell_h = _H // _CONFIG["grid"]["questions"]
+    cell_w = _W // _CONFIG["grid"]["options"]
+    y0, y1 = 0, cell_h
+    x0, x1 = cell_w, 2 * cell_w
+    cv2.line(img, (x0, y0), (x1, y1), (0, 0, 0), 2)
+    cv2.line(img, (x0, y1), (x1, y0), (0, 0, 0), 2)
+    config = {**_CONFIG, "bubble": {"fill_threshold": 0.45, "morph_open_kernel": 5}}
+    marks = read_marks(img, config)
+    assert marks[0] is None
+
+
+def test_solid_fill_survives_opening():
+    img = _fill_cell(_white_bgr(), row=0, col=1)
+    config = {**_CONFIG, "bubble": {"fill_threshold": 0.45, "morph_open_kernel": 5}}
+    marks = read_marks(img, config)
+    assert marks[0] == 1
